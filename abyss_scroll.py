@@ -4,7 +4,6 @@ class Scroll:
     def __init__(self, scroll_type: str, value: float = None, buff=None):
         self.scroll_type = scroll_type
         self.value = value
-        self.buff = buff  # optional, not used if buff scrolls only increase duration
 
         # Auto-generate value if not specified
         if self.value is None:
@@ -19,7 +18,6 @@ class Scroll:
         entity.apply_scroll_buff(
             self.scroll_type,
             self.value,
-            self.buff  # optional; used for legacy logic if needed
         )
 
     def get_description(self):

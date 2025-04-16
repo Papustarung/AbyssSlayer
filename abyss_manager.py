@@ -65,32 +65,3 @@ class GameManager:
         state_text = f"State: {self.player.state}"
         label = font.render(state_text, True, (255, 255, 255))  # white text
         surface.blit(label, (10, Config.SCREEN_HEIGHT - 30))  # 10px from left, 30px from bottom
-
-
-def main():
-    pg.init()
-    pg.font.init()
-    font = pg.font.SysFont("arial", 20)
-
-    screen = pg.display.set_mode((Config.SCREEN_WIDTH, Config.SCREEN_HEIGHT))
-    pg.display.set_caption("Abyss Slayer")
-    clock = pg.time.Clock()
-
-    gm = GameManager(screen)
-
-    running = True
-    while running:
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                running = False
-
-        gm.update()
-        screen.fill((0, 0, 0))
-        gm.draw()
-        pg.display.flip()
-        clock.tick(60)
-
-    pg.quit()
-
-if __name__ == "__main__":
-    main()
