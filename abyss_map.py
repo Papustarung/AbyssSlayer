@@ -1,71 +1,89 @@
-import pygame
-import random
-
+import pygame as pg
+from PIL import Image
 
 class Map:
-    def __init__(self, map_image_path, cell_size=32):
-        self.cell_size = cell_size
-        self.image = pygame.image.load(map_image_path).convert()
-        self.width, self.height = self.image.get_size()
-        self.cols = self.width // cell_size
-        self.rows = self.height // cell_size
 
-        # Initialize the walkability grid (0 = walkable, 1 = blocked)
-        self.walkability = [[0 for _ in range(self.cols)] for _ in range(self.rows)]
-        self.chest_spots = []
+    FLOOR = '0'
+    WALL = '1'
+    ENEMY_SPAWN = 'E'
+    CHEST_SPAWN = 'C'
+
+    def __init__(self, image_path, tile_size):
+        self.tile_size = tile_size
+        self.grid = self._load_grid_from_image(image_path)
+        self.walkable = []
+        self.chest_spawns = []
         self.enemy_spawns = []
+        self._process_layout()
 
-        self._generate_grid()
+    def _load_grid_from_image(self, image_path):
+        img = Image.open(image_path).convert("RGB")
+        width, height = img.size
+        grid = []
 
-    def _generate_grid(self):
-        """Populates the walkability grid and identifies spawn points."""
-        for row in range(self.rows):
-            for col in range(self.cols):
-                # Calculate the center of the cell
-                sample_x = col * self.cell_size + self.cell_size // 2
-                sample_y = row * self.cell_size + self.cell_size // 2
-                color = self.image.get_at((sample_x, sample_y))[:3]
+        for y in range(height // self.tile_size):
+            row = []
+            for x in range(width // self.tile_size):
+                px = x * self.tile_size + self.tile_size // 2
+                py = y * self.tile_size + self.tile_size // 2
+                r, g, b = img.getpixel((px, py))
 
-                # If the color is black, mark as blocked.
-                # You might adjust the threshold if needed.
-                if color == (0, 0, 0):
-                    self.walkability[row][col] = 1
+                if (r, g, b) == (0, 0, 0):  # black = wall
+                    row.append(Map.WALL)
+                elif (r, g, b) == (255, 255, 255):  # white = floor
+                    row.append(Map.FLOOR)
+                elif (r, g, b) == (255, 0, 0):  # red = enemy zone
+                    row.append(Map.ENEMY_SPAWN)
+                elif (r, g, b) == (0, 255, 0):  # green = chest zone
+                    row.append(Map.CHEST_SPAWN)
                 else:
-                    self.walkability[row][col] = 0
+                    row.append(Map.WALL)  # default to walkable
+            grid.append(row)
+        return grid
 
-                # Optional: check for special colors for chest and enemy spawns
-                # For example, if color is light pink, add to chest_spots.
-                # if color == (255, 182, 193):  # light pink
-                #     self.chest_spots.append((sample_x, sample_y))
-                # Similarly for enemy spawns...
+    def _process_layout(self):
+        for y, row in enumerate(self.grid):
+            for x, cell in enumerate(row):
+                if cell != Map.WALL:  # walkable if not a wall
+                    self.walkable.append((x, y))
+                if cell == Map.CHEST_SPAWN:
+                    self.chest_spawns.append((x, y))
+                if cell == Map.ENEMY_SPAWN:
+                    self.enemy_spawns.append((x, y))
 
-    def is_cell_walkable(self, pixel_x, pixel_y):
-        """Converts pixel coordinates to grid coordinates and checks walkability."""
-        grid_col = int(pixel_x) // self.cell_size
-        grid_row = int(pixel_y) // self.cell_size
-        # Ensure the coordinates are within bounds
-        if 0 <= grid_col < self.cols and 0 <= grid_row < self.rows:
-            return self.walkability[grid_row][grid_col] == 0
+    def get_wall_rects(self):
+        wall_rects = []
+        for y, row in enumerate(self.grid):
+            for x, cell in enumerate(row):
+                if cell == Map.WALL:
+                    wall_rects.append(pg.Rect(
+                        x * self.tile_size,
+                        y * self.tile_size,
+                        self.tile_size,
+                        self.tile_size
+                    ))
+        return wall_rects
+
+    def is_walkable(self, x, y):
+        if 0 <= y < len(self.grid) and 0 <= x < len(self.grid[0]):
+            return self.grid[y][x] != '1'
         return False
 
-    def get_random_chest_spots(self, n):
-        """Returns n random chest positions."""
-        return random.sample(self.chest_spots, k=min(n, len(self.chest_spots)))
+    def draw_placeholder(self, surface, camera, show_grid=True, wall=False, floor=False, enemy=False, chest=False):
+        for y, row in enumerate(self.grid):
+            for x, cell in enumerate(row):
+                world_x = x * self.tile_size
+                world_y = y * self.tile_size
+                screen_x, screen_y = camera.apply((world_x, world_y))
 
-    def get_random_enemy_spawns(self, n):
-        """Returns n random enemy spawn positions."""
-        return random.sample(self.enemy_spawns, k=min(n, len(self.enemy_spawns)))
+                if show_grid:
+                    rect = pg.Rect(screen_x, screen_y, self.tile_size, self.tile_size)
 
-    def draw_debug(self, screen):
-        """Optional debug method to draw grid lines and obstacles."""
-        for row in range(self.rows):
-            for col in range(self.cols):
-                rect = pygame.Rect(col * self.cell_size, row * self.cell_size, self.cell_size, self.cell_size)
-                # Draw grid cell borders
-                pygame.draw.rect(screen, (100, 100, 100), rect, 1)
-                # If blocked, fill with a transparent overlay
-                if self.walkability[row][col] == 1:
-                    s = pygame.Surface((self.cell_size, self.cell_size))
-                    s.set_alpha(100)
-                    s.fill((0, 0, 0))
-                    screen.blit(s, rect.topleft)
+                    if cell == Map.WALL and wall == True:
+                        pg.draw.rect(surface, (50, 50, 50), rect)      # Wall
+                    elif cell == Map.ENEMY_SPAWN and enemy == True:
+                        pg.draw.rect(surface, (200, 0, 0), rect)      # Enemy spawn
+                    elif cell == Map.CHEST_SPAWN and chest == True:
+                        pg.draw.rect(surface, (0, 200, 0), rect)      # Chest
+                    elif cell == Map.FLOOR and floor == True:
+                        pg.draw.rect(surface, (230, 230, 230), rect)  # Floor
