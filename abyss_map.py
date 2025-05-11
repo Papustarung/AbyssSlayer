@@ -1,5 +1,6 @@
 import pygame as pg
 from PIL import Image
+from config import Config
 
 class Map:
 
@@ -69,6 +70,14 @@ class Map:
             return self.grid[y][x] != '1'
         return False
 
+    def get_walkable_tiles(self):
+        walkable = []
+        for y, row in enumerate(self.grid):
+            for x, cell in enumerate(row):
+                if self.is_walkable(x, y):
+                    walkable.append((x, y))
+        return walkable
+
     def draw_placeholder(self, surface, camera, show_grid=True, wall=False, floor=False, enemy=False, chest=False):
         for y, row in enumerate(self.grid):
             for x, cell in enumerate(row):
@@ -82,8 +91,8 @@ class Map:
                     if cell == Map.WALL and wall == True:
                         pg.draw.rect(surface, (50, 50, 50), rect)      # Wall
                     elif cell == Map.ENEMY_SPAWN and enemy == True:
-                        pg.draw.rect(surface, (200, 0, 0), rect)      # Enemy spawn
+                        pg.draw.rect(surface, (230, 230, 230), rect)      # Enemy spawn
                     elif cell == Map.CHEST_SPAWN and chest == True:
-                        pg.draw.rect(surface, (0, 200, 0), rect)      # Chest
+                        pg.draw.rect(surface, (200, 200, 0), rect)      # Chest
                     elif cell == Map.FLOOR and floor == True:
                         pg.draw.rect(surface, (230, 230, 230), rect)  # Floor
